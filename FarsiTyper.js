@@ -1,6 +1,6 @@
 /*
 FarsiTyper
-Version: 0.5
+Version: 0.7
 
 این اسکریپت بر مبنای اسکریپت کاوه احمدی به نام farsitype نوشته شده است
 
@@ -66,8 +66,9 @@ var FarsiType = {
 	counter: 0,
 	ShowChangeLangButton: 0,	// 0: Hidden / 1: Visible
 	KeyBoardError: 0,			// 0: Disable FarsiType / 1: Show Error
-	ChangeDir: 0,			// 0: No Action / 1: Do Rtl-Ltr / 2: Rtl-Ltr button
-	UnSupportedAction: 0		//0: Disable FarsiType / 1: Low Support
+	ChangeDir: 0,				// 0: No Action / 1: Do Rtl-Ltr / 2: Rtl-Ltr button
+	UnSupportedAction: 0,		// 0: Disable FarsiType / 1: Low Support
+	patternFA: 1,			// 0: No Action / 1: فارسی خروجی نمیدهد
 }
 
 FarsiType.enable_disable = function(Dis) {
@@ -124,7 +125,7 @@ FarsiType.init = function() {
 
 	var Inputs = document.getElementsByTagName('INPUT');
 	for (var i=0; i<Inputs.length; i++) {
-		if (Inputs[i].type.toLowerCase() == 'text' && (Inputs[i].lang.toLowerCase() == 'fa' || Inputs[i].lang.toLowerCase() == 'fa-ir')) {
+		if ( (Inputs[i].type.toLowerCase() == 'text' || Inputs[i].type.toLowerCase() == 'tel' || Inputs[i].type.toLowerCase() == 'number') && (Inputs[i].lang.toLowerCase() == 'fa' || Inputs[i].lang.toLowerCase() == 'fa-ir')) {
 			FarsiType.counter++;
 			new FarsiType.KeyObject(Inputs[i], FarsiType.counter);
 		}
@@ -132,7 +133,7 @@ FarsiType.init = function() {
 
 	var Areas = document.getElementsByTagName('TEXTAREA');
 	for (var i=0; i<Areas.length; i++) {
-		if (Areas[i].lang.toLowerCase() == 'fa' || Areas[i].lang.toLowerCase() == 'fa-ir') {
+		if (Areas[i].lang.toLowerCase() == 'fa' || Areas[i].lang.toLowerCase() == 'fa-ir') {			
 			FarsiType.counter++;
 			new FarsiType.KeyObject(Areas[i], FarsiType.counter);
 		}
@@ -236,11 +237,219 @@ FarsiType.KeyObject = function(z,x) {
 		return false;
 	}
 
+
+
+	MobileConvert = function(e) {
+
+		if (e == null)
+			e = window.event;
+
+		var key = this.value[this.selectionStart-1].charCodeAt(0)
+		var eElement = e.target || e.originalTarget || e.srcElement;
+
+		this.value = this.value.substring(0, (this.selectionStart-1)) + this.value.substring((this.selectionStart+1));
+
+		if (true) {
+			// اگر فارسی باشد
+			if (key < 128) {
+				var select_key = true;
+				var pattern_key = true;
+
+				// حروف بزرگ را هم به فارسی برگرداند
+				if ((key >= 65 && key <= 90 && !e.shiftKey)) {
+
+					key = FarsiType.farsiKey[key];
+				}
+				// میانبر انتخاب کل نوشته
+				else if ((key >= 97 && key <= 122 ) && e.shiftKey || (key >= 65 && key <= 90 && e.shiftKey)){
+
+					switch(key){
+						case 72:
+							key = 1570;
+							break
+
+						case 67:
+							key = 1688
+							break
+
+						default:
+							select_key = false
+					}
+
+				}
+				else if (key >= 48 && key <= 57 && !e.shiftKey){
+
+					pattern_key = (((FarsiType.patternFA) ? false : true) || (eElement.getAttribute('nomask') === "true"));
+				}
+				else{
+
+
+					if(key == 46 && !e.shiftKey){
+						pattern_key = (((FarsiType.patternFA) ? false : true) || (eElement.getAttribute('nomask') === "true"));
+					}
+					else if(key == 32 && !e.shiftKey){
+						pattern_key = (((FarsiType.patternFA) ? false : true) || (eElement.getAttribute('nomask') === "true"));
+					}
+					else if (key == 32 && e.shiftKey)
+						key = 8204;
+					else
+						key = FarsiType.farsiKey[key-32];
+				}
+				key = typeof key == 'string' ? key : String.fromCharCode(key);
+
+
+				// شرط جدید برای آنکه بفهمیم که آیا از بخش میانبر آمده ایم یا نه
+				// if (select_key || pattern_key) {
+				try {
+					
+					var docSelection = document.selection;
+					var selectionStart = eElement.selectionStart;
+					var selectionEnd = eElement.selectionEnd;
+
+					if ((select_key)) {
+						if (typeof selectionStart == 'number') { 
+							//FOR W3C STANDARD BROWSERS
+							var nScrollTop = eElement.scrollTop;
+							var nScrollLeft = eElement.scrollLeft;
+							var nScrollWidth = eElement.scrollWidth;
+								
+
+							eElement.value = eElement.value.substring(0, selectionStart) + key + eElement.value.substring(selectionEnd);
+							setSelectionRange(eElement, selectionStart + key.length, selectionStart + key.length);
+			
+							var nW = eElement.scrollWidth - nScrollWidth;
+							if (eElement.scrollTop == 0) { eElement.scrollTop = nScrollTop }
+						} else if (docSelection) {
+							var nRange = docSelection.createRange();
+							nRange.text = key;
+							nRange.setEndPoint('StartToEnd', nRange);
+							nRange.select();
+						}
+					}
+		
+				} catch(error) {
+					try {
+						// IE
+						e.keyCode = key
+					} catch(error) {
+						try {
+							// OLD GECKO
+							e.initKeyEvent("keypress", true, true, document.defaultView, false, false, true, false, 0, key, eElement);
+						} catch(error) {
+							//OTHERWISE
+							if (FarsiType.UnSupportedAction == 0) {
+								alert('Sorry! no FarsiType support')
+								FarsiType.Disable();
+								var Dis = document.getElementById('disableFarsiType')
+								if (Dis != null) {
+									Dis.disabled = true;
+								}
+								return false;
+							} else {
+								
+								eElement.value += key;					
+							}
+						}
+					}
+				}
+				// }
+
+				if (e.preventDefault)
+					e.preventDefault();
+				e.returnValue = false;
+			}
+			else{
+
+
+				var pattern_key = (((FarsiType.patternFA) ? false : true));
+
+				// var key = e.which || e.charCode || e.keyCode;
+				// var eElement = e.target || e.originalTarget || e.srcElement;
+
+				if ((key >= 1776 && key <= 1785 && !e.shiftKey)) {
+
+					// var pattern_key = (false || (eElement.getAttribute('nomask') === "true"));
+					var pattern_key = false;
+					key = FarsiType.enNUM[key-1776];
+				}
+				else if ((key >= 1632 && key <= 1641 && !e.shiftKey)) {
+					var pattern_key = false;
+					key = FarsiType.enNUM[key-1632];
+				}
+
+
+				key = typeof key == 'string' ? key : String.fromCharCode(key);
+
+				if (!pattern_key){
+
+					try {
+					
+						var docSelection = document.selection;
+						var selectionStart = eElement.selectionStart;
+						var selectionEnd = eElement.selectionEnd;
+
+						if (typeof selectionStart == 'number') { 
+							//FOR W3C STANDARD BROWSERS
+							var nScrollTop = eElement.scrollTop;
+							var nScrollLeft = eElement.scrollLeft;
+							var nScrollWidth = eElement.scrollWidth;
+		
+							eElement.value = eElement.value.substring(0, selectionStart) + key + eElement.value.substring(selectionEnd);
+							setSelectionRange(eElement, selectionStart + key.length, selectionStart + key.length);
+			
+							var nW = eElement.scrollWidth - nScrollWidth;
+							if (eElement.scrollTop == 0) { eElement.scrollTop = nScrollTop }
+						} else if (docSelection) {
+							var nRange = docSelection.createRange();
+							nRange.text = key;
+							nRange.setEndPoint('StartToEnd', nRange);
+							nRange.select();
+						}
+		
+					} catch(error) {
+						try {
+							// IE
+							e.keyCode = key
+						} catch(error) {
+							try {
+								// OLD GECKO
+								e.initKeyEvent("keypress", true, true, document.defaultView, false, false, true, false, 0, key, eElement);
+							} catch(error) {
+								//OTHERWISE
+								if (FarsiType.UnSupportedAction == 0) {
+									alert('Sorry! no FarsiType support')
+									FarsiType.Disable();
+									var Dis = document.getElementById('disableFarsiType')
+									if (Dis != null) {
+										Dis.disabled = true;
+									}
+									return false;
+								} else {
+									eElement.value += key;					
+								}
+							}
+						}
+					}
+				}
+
+				if (e.preventDefault)
+					e.preventDefault();
+				e.returnValue = false;
+			}
+		}
+		
+
+		return true;
+	}
+
+
+
+
 	Convert = function(e) {
 
 		if (e == null)
 			e = window.event;
-		console.log(e)
+
 		var key = e.which || e.charCode || e.keyCode;
 		var eElement = e.target || e.originalTarget || e.srcElement;
 
@@ -276,47 +485,68 @@ FarsiType.KeyObject = function(z,x) {
 
 			// اگر فارسی باشد
 			if (FarsiType.Type && z.farsi) {
-				var select_key = true
+				var select_key = true;
+				var pattern_key = true;
 
 				// حروف بزرگ را هم به فارسی برگرداند
-				if ((key >= 65 && key <= 90&& !e.shiftKey)) {
+				if ((key >= 65 && key <= 90 && !e.shiftKey)) {
 
 					key = FarsiType.farsiKey[key];
 				}
 				// میانبر انتخاب کل نوشته
-				else if ((key >= 97 && key <= 122 ) && e.shiftKey || (key >= 65 && key <= 90&& e.shiftKey)){
+				else if ((key >= 97 && key <= 122 ) && e.shiftKey || (key >= 65 && key <= 90 && e.shiftKey)){
 
-					this.select();
-					select_key = false
+					switch(key){
+						case 72:
+							key = 1570;
+							break
+
+						case 67:
+							key = 1688
+							break
+
+						default:
+							select_key = false
+					}
+
+				}
+				else if (key >= 48 && key <= 57 && !e.shiftKey){
+
+					pattern_key = (((FarsiType.patternFA) ? false : true) || (eElement.getAttribute('nomask') === "true"));
 				}
 				else{
 
 
-
-					// Shift-space -> ZWNJ
-					// برای آینده
-					// if (key == 32 && e.shiftKey)
-						// key = 8204;
-					// else
-						// key = FarsiType.farsiKey[key-32];
+					if(key == 46 && !e.shiftKey){
+						pattern_key = (((FarsiType.patternFA) ? false : true) || (eElement.getAttribute('nomask') === "true"));
+					}
+					else if(key == 32 && !e.shiftKey){
+						pattern_key = (((FarsiType.patternFA) ? false : true) || (eElement.getAttribute('nomask') === "true"));
+					}
+					else if (key == 32 && e.shiftKey)
+						key = 8204;
+					else
+						key = FarsiType.farsiKey[key-32];
 				}
-
 				key = typeof key == 'string' ? key : String.fromCharCode(key);
 
-				// شرط جدید برای آنکه بفهمیم که آیا از بخش میانبر آمده ایم یا نه
-				if (select_key) {
-					try {
-					
-						var docSelection = document.selection;
-						var selectionStart = eElement.selectionStart;
-						var selectionEnd = eElement.selectionEnd;
 
+				// شرط جدید برای آنکه بفهمیم که آیا از بخش میانبر آمده ایم یا نه
+				// if (select_key || pattern_key) {
+				try {
+					
+					var docSelection = document.selection;
+					var selectionStart = eElement.selectionStart;
+					var selectionEnd = eElement.selectionEnd;
+
+					if ((select_key && pattern_key)) {
 						if (typeof selectionStart == 'number') { 
 							//FOR W3C STANDARD BROWSERS
 							var nScrollTop = eElement.scrollTop;
 							var nScrollLeft = eElement.scrollLeft;
 							var nScrollWidth = eElement.scrollWidth;
-		
+								
+
 							eElement.value = eElement.value.substring(0, selectionStart) + key + eElement.value.substring(selectionEnd);
 							setSelectionRange(eElement, selectionStart + key.length, selectionStart + key.length);
 			
@@ -328,50 +558,61 @@ FarsiType.KeyObject = function(z,x) {
 							nRange.setEndPoint('StartToEnd', nRange);
 							nRange.select();
 						}
+					}
 		
+				} catch(error) {
+					try {
+						// IE
+						e.keyCode = key
 					} catch(error) {
 						try {
-							// IE
-							e.keyCode = key
+							// OLD GECKO
+							e.initKeyEvent("keypress", true, true, document.defaultView, false, false, true, false, 0, key, eElement);
 						} catch(error) {
-							try {
-								// OLD GECKO
-								e.initKeyEvent("keypress", true, true, document.defaultView, false, false, true, false, 0, key, eElement);
-							} catch(error) {
-								//OTHERWISE
-								if (FarsiType.UnSupportedAction == 0) {
-									alert('Sorry! no FarsiType support')
-									FarsiType.Disable();
-									var Dis = document.getElementById('disableFarsiType')
-									if (Dis != null) {
-										Dis.disabled = true;
-									}
-									return false;
-								} else {
-									eElement.value += key;					
+							//OTHERWISE
+							if (FarsiType.UnSupportedAction == 0) {
+								alert('Sorry! no FarsiType support')
+								FarsiType.Disable();
+								var Dis = document.getElementById('disableFarsiType')
+								if (Dis != null) {
+									Dis.disabled = true;
 								}
+								return false;
+							} else {
+								
+								eElement.value += key;					
 							}
 						}
 					}
 				}
+				// }
 
 				if (e.preventDefault)
 					e.preventDefault();
 				e.returnValue = false;
 			}
 			else{
+
+				var pattern_key = (((FarsiType.patternFA) ? false : true) || !(eElement.getAttribute('nomask') === "true"));
+
 				var key = e.which || e.charCode || e.keyCode;
 				var eElement = e.target || e.originalTarget || e.srcElement;
 
-				console.log(key)
-
 				if ((key >= 1776 && key <= 1785 && !e.shiftKey)) {
 
-					console.log(FarsiType.enNUM[key-1776])
-
+					// var pattern_key = (false || (eElement.getAttribute('nomask') === "true"));
+					var pattern_key = false;
 					key = FarsiType.enNUM[key-1776];
 				}
+				else if ((key >= 1632 && key <= 1641 && !e.shiftKey)) {
+					var pattern_key = false;
+					key = FarsiType.enNUM[key-1632];
+				}
+
+
 				key = typeof key == 'string' ? key : String.fromCharCode(key);
+
+				if (!pattern_key){
 
 					try {
 					
@@ -421,6 +662,7 @@ FarsiType.KeyObject = function(z,x) {
 							}
 						}
 					}
+				}
 
 				if (e.preventDefault)
 					e.preventDefault();
@@ -434,7 +676,15 @@ FarsiType.KeyObject = function(z,x) {
 
 	if (FarsiType.ShowChangeLangButton == 1) { z.bottelm.onmouseup = ChangeLang; }
 	if (FarsiType.ChangeDir == 2) { z.Direlm.onmouseup = ChangeDirection; }
-	z.onkeypress = Convert;
+
+
+	if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+		z.onkeyup = MobileConvert;}
+	else{
+		z.onkeypress = Convert;
+	}
+
+	
 }
 
 if (window.attachEvent) {
