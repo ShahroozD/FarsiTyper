@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>FarsiType Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    button {
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>FarsiType Input Test</h2>
+  <label for="input1">Text Input (lang="fa"):</label>
+  <input type="text" id="input1" lang="fa" >
+
+  <label for="textarea1">Textarea (lang="fa"):</label>
+  <textarea id="textarea1" rows="5" lang="fa"></textarea>
+
+  <script type="module" src="./dist/farsitype.min.js"></script>
+  <script>
+
+    // Initialize on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      const farsiTyper = new FarsiType({
+        showLangButton: true,
+        changeDir: true,
+        patternFA: true
+      });
+
+      const input = "sghl"; // typed from English keyboard
+      const result = FarsiType.convertString(input); // will be "سلام"
+      console.log(result);
+    });
+
+  </script>
+</body>
+</html>
